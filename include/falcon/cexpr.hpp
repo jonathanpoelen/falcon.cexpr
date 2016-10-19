@@ -72,11 +72,17 @@ void cif(std::false_type, True &&)
 
 class nodefault {};
 
+namespace detail
+{
+  template<class Int, Int... ints>
+  class check_unique_int : std::integral_constant<Int, ints>... {};
+}
+
 template<class Int, Int... ints, class I, class Func>
 constexpr
 void cswitch(std::integer_sequence<Int, ints...>, I i, Func && func, nodefault)
 {
-  class has_unique_int : std::integral_constant<Int, ints>... {};
+  detail::check_unique_int<Int, ints>{};
 
   (void)std::initializer_list<int>{(void(
     i == ints
@@ -89,7 +95,7 @@ template<class Int, Int... ints, class I, class Func, class Default>
 constexpr
 void cswitch(std::integer_sequence<Int, ints...>, I i, Func && func, Default && default_func)
 {
-  class has_unique_int : std::integral_constant<Int, ints>... {};
+  detail::check_unique_int<Int, ints>{};
 
   bool has_ints = false;
   (void)std::initializer_list<int>{(void(
