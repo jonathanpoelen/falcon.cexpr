@@ -24,9 +24,9 @@ decltype(cif(cbool(cond), func_yes, func_no)) cif(cond, func_yes, func_no);
 
 constexpr class nodefault_t {} nodefault;
 
-void cswitch(std::integer_sequence ints, i, func); // = cswitch(ints, i, func, func)
 void cswitch(std::integer_sequence ints, i, func, nodefault_t);
 void cswitch(std::integer_sequence ints, i, func, default_func);
+void cswitch(std::integer_sequence ints, i, func); // = cswitch(ints, i, func, func)
 
 T rswitch(T, std::integer_sequence ints, i, func, nodefault_t);
 T rswitch(T, std::integer_sequence ints, i, func, default_func);
