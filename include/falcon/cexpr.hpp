@@ -35,42 +35,101 @@ SOFTWARE.
 
 namespace falcon { namespace cexpr {
 
-template<class True, class False>
+template<class T>
 constexpr
-True select(std::true_type, True && yes, False &&)
-{ return std::forward<True>(yes); }
+std::integral_constant<bool, bool(T::value)>
+cbool(T const &) noexcept
+{ return {}; }
 
-template<class True, class False>
+// TODO falcon.cxx project
+#ifdef IN_IDE_PARSER
+
+# define FALCON_CEXPR_DECLTYPE_AUTO_RETURN(a) \
+  -> decltype(a)                              \
+  { return (a); }                             \
+
+# define FALCON_CEXPR_DECLTYPE_AUTO_RETURN_NOEXCEPT(a) \
+  noexcept(noexcept(decltype(a)(a))) ->                \
+  decltype(a)                                          \
+  { return (a); }                                      \
+
+#else
+
+# define FALCON_CEXPR_DECLTYPE_AUTO_RETURN(...) \
+  -> decltype(__VA_ARGS__)                      \
+  { return (__VA_ARGS__); }                     \
+
+# define FALCON_CEXPR_DECLTYPE_AUTO_RETURN_NOEXCEPT(...)    \
+  noexcept(noexcept(decltype(__VA_ARGS__)(__VA_ARGS__))) -> \
+  decltype(__VA_ARGS__)                                     \
+  { return (__VA_ARGS__); }                                 \
+
+#endif
+
+namespace detail
+{
+  template<class True, class False>
+  constexpr True select_(std::true_type, True && yes, False &&)
+  { return std::forward<True>(yes); }
+
+  template<class True, class False>
+  constexpr False select_(std::false_type, True &&, False && no)
+  { return std::forward<False>(no); }
+}
+
+/// \return \p yes if \p cond is a \c true constant expression, otherwise \p no
+template<class B, class True, class False>
+constexpr auto select(B cond, True && yes, False && no)
+FALCON_CEXPR_DECLTYPE_AUTO_RETURN(
+  detail::select_(cbool(cond), std::forward<True>(yes), std::forward<False>(no))
+)
+
+namespace detail
+{
+  template<class True, class False>
+  constexpr auto cif_(std::true_type, True && yes, False &&)
+  FALCON_CEXPR_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+    std::forward<True>(yes)()
+  )
+
+  template<class True, class False>
+  constexpr auto cif_(std::false_type, True &&, False && no)
+  FALCON_CEXPR_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+    std::forward<False>(no)()
+  )
+
+  template<class True>
+  constexpr
+  auto cif_(std::true_type, True && yes)
+  FALCON_CEXPR_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+    std::forward<True>(yes)()
+  )
+
+  template<class True>
+  constexpr
+  void cif_(std::false_type, True &&)
+  {}
+}
+
+/// \return \p yes() if \p cond is a \c true constant expression, otherwise \p no()
+template<class B, class True, class False>
+constexpr auto cif(B cond, True && yes, False && no)
+FALCON_CEXPR_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+  detail::cif_(cbool(cond), std::forward<True>(yes), std::forward<False>(no))
+)
+
+/// \return \p yes() if \p cond is a \c true constant expression, otherwise \c void
+template<class B, class True>
 constexpr
-False select(std::false_type, True &&, False && no)
-{ return std::forward<False>(no); }
+auto cif(B cond, True && yes)
+FALCON_CEXPR_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+  detail::cif_(cbool(cond), std::forward<True>(yes))
+)
 
 
-template<class True, class False>
-constexpr
-auto cif(std::true_type, True && yes, False &&)
--> decltype(yes())
-{ return yes(); }
-
-template<class True, class False>
-constexpr
-auto cif(std::false_type, True &&, False && no)
--> decltype(no())
-{ return no(); }
-
-template<class True>
-constexpr
-auto cif(std::true_type, True && yes)
--> decltype(yes())
-{ return yes(); }
-
-template<class True>
-constexpr
-void cif(std::false_type, True &&)
-{}
-
-
-class nodefault {};
+constexpr struct nodefault_t {
+  constexpr nodefault_t() noexcept {}
+} nodefault;
 
 namespace detail
 {
@@ -78,19 +137,21 @@ namespace detail
   class check_unique_int : std::integral_constant<Int, ints>... {};
 }
 
+/// \brief run \p func(\c ints) if \p i equal \c ints
 template<class Int, Int... ints, class I, class Func>
 constexpr
-void cswitch(std::integer_sequence<Int, ints...>, I i, Func && func, nodefault)
+void cswitch(std::integer_sequence<Int, ints...>, I i, Func && func, nodefault_t)
 {
   detail::check_unique_int<Int, ints...>{};
 
   (void)std::initializer_list<int>{(void(
     i == ints
-    ? void(func(std::integral_constant<Int, ints>{}))
+    ? void(std::forward<Func>(func)(std::integral_constant<Int, ints>{}))
     : void()
   ), 1)...};
 }
 
+/// \brief run \p func(\c ints) if \p i equal \c ints, otherwise \p default_func(\p i)
 template<class Int, Int... ints, class I, class Func, class Default>
 constexpr
 void cswitch(std::integer_sequence<Int, ints...>, I i, Func && func, Default && default_func)
@@ -100,48 +161,99 @@ void cswitch(std::integer_sequence<Int, ints...>, I i, Func && func, Default && 
   bool has_ints = false;
   (void)std::initializer_list<int>{(void(
     i == ints
-    ? void((func(std::integral_constant<Int, ints>{}), void(has_ints = true)))
+    ? void((std::forward<Func>(func)(std::integral_constant<Int, ints>{}), void(has_ints = true)))
     : void()
   ), 1)...};
   if (!has_ints) {
-    default_func(i);
+    std::forward<Default>(default_func)(i);
   }
 }
 
-/// \brief shortcut for \c cswitch(\c ints, \c i, \c func, \c func)
+/// \brief shortcut for \c cswitch(\p ints, \p i, \p func, \p func)
 template<class Ints, class I, class Func>
 constexpr
 void cswitch(Ints ints, I i, Func && func)
-{ cswitch(ints, i, func, func); }
+{ cswitch(ints, i, std::forward<Func>(func), std::forward<Func>(func)); }
 
 
-template<class T, class Ints, class I, class Func>
-T rswitch(T default_value, Ints ints, I i, Func && func, nodefault)
+/// \brief run \p default_value = \p func(\c ints) if \p i equal \c ints
+/// \return \p default_value
+template<class T, class Int, Int... ints, class I, class Func>
+T rswitch(T default_value, std::integer_sequence<Int, ints...> intseq, I i, Func && func, nodefault_t)
 {
   cswitch(
-    ints, i,
+    intseq, i,
     [&](auto ic) { default_value = std::forward<Func>(func)(ic); },
-    nodefault{}
+    nodefault_t{}
   );
   return default_value;
 }
 
-template<class T, class Ints, class I, class Func, class Default>
+/// \brief run \p default_value = \p func(\c ints) if \p i equal \c ints, otherwise \p default_value = \p default_func(\p i)
+/// \return \p default_value
+template<class T, class Int, Int... ints, class I, class Func, class Default>
 constexpr
-T rswitch(T default_value, Ints ints, I i, Func && func, Default && default_func)
+T rswitch(T default_value, std::integer_sequence<Int, ints...> intseq, I i, Func && func, Default && default_func)
 {
   cswitch(
-    ints, i,
+    intseq, i,
     [&](auto ic) { default_value = std::forward<Func>(func)(ic); },
     [&](auto i_) { default_value = std::forward<Default>(default_func)(i_); }
   );
   return default_value;
 }
 
-/// \brief shortcut for \c rswitch(\c default_value, \c ints, \c i, \c func, \c func)
-template<class T, class Ints, class I, class Func>
+/// \brief shortcut for \c rswitch(\p default_value, \p intseq, \p i, \p func, \p func)
+template<class T, class Int, Int... ints, class I, class Func>
 constexpr
-T rswitch(T default_value, Ints ints, I i, Func && func)
-{ return rswitch(default_value, ints, i, std::forward<Func>(func), std::forward<Func>(func)); }
+T rswitch(T default_value, std::integer_sequence<Int, ints...> intseq, I i, Func && func)
+{ return rswitch(std::forward<T>(default_value), intseq, i, std::forward<Func>(func), std::forward<Func>(func)); }
+
+
+/// \return \p func(\p ints) if \p i equal \c ints, otherwise \p default_func(\p i)
+template<class Int, Int... ints, class I, class Func, class Default>
+constexpr
+auto rswitch(std::integer_sequence<Int, ints...>, I i, Func && func, Default && default_func)
+-> std::common_type_t<
+  decltype(std::forward<Default>(default_func)(i)),
+  decltype(std::forward<Func>(func)(std::integral_constant<Int, ints>{}))...
+>
+{
+  auto recursive_last = [&](auto){ return std::forward<Default>(default_func)(i); };
+  auto recursive = [&](auto recf, auto ic, auto ... ics){
+    return i == ic
+      ? std::forward<Func>(func)(ic)
+      : select(
+          std::integral_constant<bool, bool(sizeof...(ics))>{},
+          recf,
+          recursive_last
+      )(recf, ics...);
+  };
+  return recursive(recursive, std::integral_constant<Int, ints>{}...);
+}
+
+/// \return \p func(\p ints) if \p i equal \c ints, otherwise \a result_type{}
+template<class Int, Int... ints, class I, class Func>
+constexpr
+auto rswitch(std::integer_sequence<Int, ints...> intseq, I i, Func && func, nodefault_t)
+-> std::common_type_t<
+  decltype(std::forward<Func>(func)(std::integral_constant<Int, ints>{}))...
+>
+{
+  return rswitch(intseq, i, std::forward<Func>(func), [](I const &){
+    return std::common_type_t<
+      decltype(std::forward<Func>(func)(std::integral_constant<Int, ints>{}))...
+    >{};
+  });
+}
+
+/// \brief shortcut for \c rswitch(\c intseq, \p i, \p func, \p func)
+template<class Int, Int... ints, class I, class Func>
+constexpr
+auto rswitch(std::integer_sequence<Int, ints...> intseq, I i, Func && func)
+-> std::common_type_t<
+  decltype(std::forward<Func>(func)(std::integral_constant<Int, ints>{}))...
+>
+{ return rswitch(intseq, i, std::forward<Func>(func), std::forward<Func>(func)); }
 
 } }

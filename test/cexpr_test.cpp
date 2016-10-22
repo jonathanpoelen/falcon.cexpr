@@ -23,9 +23,13 @@ SOFTWARE.
 
 #include <falcon/cexpr.hpp>
 
-template<class> class t_ {};
+class true_ {} true_;
+class false_ {} false_;
 
-template<int... i> using ints = std::integer_sequence<int, i...>;
+inline std::true_type cbool(class true_) { return {}; }
+inline std::false_type cbool(class false_) { return {}; }
+
+template<class> class t_ {};
 
 int main()
 {
@@ -37,29 +41,64 @@ int main()
   std::integral_constant<int, 1> a;
   std::integral_constant<int, 2> b;
 
+  cbool(y) = y;
+  cbool(a) = y;
+  cbool(b) = y;
+  cbool(true_) = y;
+  cbool(n) = n;
+  cbool(std::integral_constant<int, 0>{}) = n;
+  cbool(false_) = n;
+
   select(y, a, b) = a;
+  select(true_, a, b) = a;
   select(n, a, b) = b;
+  select(false_, a, b) = b;
 
 
   auto ra = [a]{ return a; };
   auto rb = [b]{ return b; };
 
   cif(y, ra) = a;
+  cif(true_, ra) = a;
   cif(y, ra, rb) = a;
+  cif(true_, ra, rb) = a;
   t_<decltype(cif(n, ra))>{} = t_<void>{};
+  t_<decltype(cif(false_, ra))>{} = t_<void>{};
   cif(n, ra, rb) = b;
+  cif(false_, ra, rb) = b;
 
 
   std::integer_sequence<int, 0, 1, 2> ints;
   auto is = [](auto v) { return [v](auto i){ if (i != v) throw 1; return i; }; };
+  auto xto4 = [](auto) { return 4; };
 
   is(0)(rswitch(5, ints, 0, is(0)));
   is(1)(rswitch(5, ints, 1, is(1)));
   is(2)(rswitch(5, ints, 2, is(2)));
   is(3)(rswitch(5, ints, 3, is(3)));
 
-  is(0)(rswitch(5, ints, 0, is(0), nodefault{}));
-  is(1)(rswitch(5, ints, 1, is(1), nodefault{}));
-  is(2)(rswitch(5, ints, 2, is(2), nodefault{}));
-  is(5)(rswitch(5, ints, 3, is(3), nodefault{}));
+  is(0)(rswitch(5, ints, 0, is(0), xto4));
+  is(1)(rswitch(5, ints, 1, is(1), xto4));
+  is(2)(rswitch(5, ints, 2, is(2), xto4));
+  is(4)(rswitch(5, ints, 3, is(3), xto4));
+
+  is(0)(rswitch(5, ints, 0, is(0), nodefault));
+  is(1)(rswitch(5, ints, 1, is(1), nodefault));
+  is(2)(rswitch(5, ints, 2, is(2), nodefault));
+  is(5)(rswitch(5, ints, 3, is(3), nodefault));
+
+  is(0)(rswitch(ints, 0, is(0)));
+  is(1)(rswitch(ints, 1, is(1)));
+  is(2)(rswitch(ints, 2, is(2)));
+  is(3)(rswitch(ints, 3, is(3)));
+
+  is(0)(rswitch(ints, 0, is(0), xto4));
+  is(1)(rswitch(ints, 1, is(1), xto4));
+  is(2)(rswitch(ints, 2, is(2), xto4));
+  is(4)(rswitch(ints, 3, is(3), xto4));
+
+  is(0)(rswitch(ints, 0, is(0), nodefault));
+  is(1)(rswitch(ints, 1, is(1), nodefault));
+  is(2)(rswitch(ints, 2, is(2), nodefault));
+  is(0)(rswitch(ints, 3, is(3), nodefault));
 }
