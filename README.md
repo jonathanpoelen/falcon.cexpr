@@ -3,7 +3,7 @@ g++-4.9, g++-5, clang-3.6: [![Travis Build Status](https://travis-ci.org/jonatha
 VS 2015: [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/github/jonathanpoelen/falcon.cexpr)](https://ci.appveyor.com/project/jonathanpoelen/falcon.cexpr)
 
 
-# cexpr
+# falcon::cexpr
 
 ```cpp
 namespace falcon { namespace cexpr {
@@ -32,8 +32,10 @@ T rswitch(T, std::integer_sequence ints, i, func, nodefault_t);
 T rswitch(T, std::integer_sequence ints, i, func, default_func);
 T rswitch(T, std::integer_sequence ints, i, func); // = rswitch(T, ints, i, func, func)
 
-std::common_type_t<decltype(func(ic))..., decltype(func(i))> rswitch(std::integer_sequence<I, ic...>, i, func, nodefault_t);
-std::common_type_t<decltype(func(ic))..., decltype(default_func(i))> rswitch(std::integer_sequence<I, ic...>, i, func, default_func);
+std::common_type_t<decltype(func(ic))..., decltype(func(i))>
+  rswitch(std::integer_sequence<I, ic...>, i, func, nodefault_t);
+std::common_type_t<decltype(func(ic))..., decltype(default_func(i))>
+  rswitch(std::integer_sequence<I, ic...>, i, func, default_func);
 auto rswitch(std::integer_sequence ints, i, func); // = rswitch(ints, i, func, func)
 
 } }
