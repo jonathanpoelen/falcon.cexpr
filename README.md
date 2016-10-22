@@ -28,15 +28,13 @@ void cswitch(std::integer_sequence ints, i, func); // = cswitch(ints, i, func, f
 void cswitch(std::integer_sequence ints, i, func, nodefault_t);
 void cswitch(std::integer_sequence ints, i, func, default_func);
 
-T rswitch(T, std::integer_sequence ints, i, func); // = rswitch(T, ints, i, func, func)
 T rswitch(T, std::integer_sequence ints, i, func, nodefault_t);
 T rswitch(T, std::integer_sequence ints, i, func, default_func);
+T rswitch(T, std::integer_sequence ints, i, func); // = rswitch(T, ints, i, func, func)
 
-auto rswitch(std::integer_sequence ints, i, func); // = rswitch(T, ints, i, func, func)
-std::common_type_t<decltype(func(ic))..., decltype(func(i))>
-  rswitch(std::integer_sequence<I, ic...>, i, func, nodefault_t);
-std::common_type_t<decltype(func(ic))..., decltype(default_func(i))>
-  rswitch(std::integer_sequence<I, ic...>, i, func, default_func);
+std::common_type_t<decltype(func(ic))..., decltype(func(i))> rswitch(std::integer_sequence<I, ic...>, i, func, nodefault_t);
+std::common_type_t<decltype(func(ic))..., decltype(default_func(i))> rswitch(std::integer_sequence<I, ic...>, i, func, default_func);
+auto rswitch(std::integer_sequence ints, i, func); // = rswitch(ints, i, func, func)
 
 } }
 ```
