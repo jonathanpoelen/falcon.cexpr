@@ -127,9 +127,10 @@ FALCON_CEXPR_DECLTYPE_AUTO_RETURN_NOEXCEPT(
 )
 
 
-constexpr struct nodefault_t {
+struct nodefault_t {
   constexpr nodefault_t() noexcept {}
-} nodefault;
+};
+constexpr nodefault_t nodefault;
 
 namespace detail
 {
