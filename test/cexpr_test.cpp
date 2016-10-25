@@ -69,7 +69,7 @@ int main()
 
 
   std::integer_sequence<int, 0, 1, 2> ints;
-  auto is = [](auto v) { return [v](auto i){ if (i != v) throw 1; return i; }; };
+  auto is = [](auto v) { return [v](auto i){ if (i != v) throw 1; return int(i); }; };
   auto xto4 = [](auto) { return 4; };
 
   is(0)(rswitch(5, ints, 0, is(0)));
