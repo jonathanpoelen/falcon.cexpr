@@ -1,12 +1,12 @@
-g++-4.9, g++-5, clang-3.6: [![Travis Build Status](https://travis-ci.org/jonathanpoelen/falcon.cexpr.svg?branch=master)](https://travis-ci.org/jonathanpoelen/falcon.cexpr)
+g++-4.9, g++-5, clang-3.6: [![Travis Build Status](https://travis-ci.org/jonathanpoelen/falcon.cstmt.svg?branch=master)](https://travis-ci.org/jonathanpoelen/falcon.cstmt)
 
-VS 2015: [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/github/jonathanpoelen/falcon.cexpr)](https://ci.appveyor.com/project/jonathanpoelen/falcon-cexpr)
+VS 2015: [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/github/jonathanpoelen/falcon.cstmt)](https://ci.appveyor.com/project/jonathanpoelen/falcon-cstmt)
 
 
-# falcon::cexpr
+# falcon::cstmt
 
 ```cpp
-namespace falcon { namespace cexpr {
+namespace falcon { namespace cstmt {
 
 auto cbool(T) -> std::integral_constant<bool, bool(T::value)>;
 

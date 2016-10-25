@@ -33,7 +33,7 @@ SOFTWARE.
 #include <type_traits>
 #include <utility>
 
-namespace falcon { namespace cexpr {
+namespace falcon { namespace cstmt {
 
 template<class T>
 constexpr

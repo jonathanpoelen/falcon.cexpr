@@ -1,4 +1,4 @@
-project(cexpr)
+project(cstmt)
 cmake_minimum_required(VERSION 2.8)
 
 
@@ -23,9 +23,9 @@ function(add_executable_test name)
   add_test(all_tests ${name}_test)
 endfunction()
 
-add_executable_test(cexpr)
+add_executable_test(cstmt)
 
 enable_testing()
 
 
-# install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cexpr DESTINATION .)
+# install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cstmt DESTINATION .)

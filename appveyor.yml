@@ -12,25 +12,25 @@ platform:
   #- Debug
   #- Release
 
-clone_folder: c:\projects\cexpr
+clone_folder: c:\projects\cstmt
 
 build:
   parallel: false
-  project: c:\projects\cexpr\build\cexpr.sln
+  project: c:\projects\cstmt\build\cstmt.sln
   verbosity: minimal
 
 before_build:
-  - cd c:\projects\cexpr
+  - cd c:\projects\cstmt
   - md build
   - cd build
   - cmake -G"Visual Studio 14 2015 Win64" ..
 
 build_script:
- - cd c:\projects\cexpr\build
- - msbuild /p:Configuration=Debug;Platform=x64 cexpr.sln
- - msbuild /p:Configuration=Release;Platform=x64 cexpr.sln
+ - cd c:\projects\cstmt\build
+ - msbuild /p:Configuration=Debug;Platform=x64 cstmt.sln
+ - msbuild /p:Configuration=Release;Platform=x64 cstmt.sln
 
 test_script:
- - cd c:\projects\cexpr\build
+ - cd c:\projects\cstmt\build
  - cmd: ctest -C Debug -VV
  - cmd: ctest -C Release -VV

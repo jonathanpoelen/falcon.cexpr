@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <falcon/cexpr.hpp>
+#include <falcon/cstmt.hpp>
 
 class true_ {} true_;
 class false_ {} false_;
@@ -33,7 +33,7 @@ template<class> class t_ {};
 
 int main()
 {
-  using namespace falcon::cexpr;
+  using namespace falcon::cstmt;
 
 
   std::true_type y;
