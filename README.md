@@ -36,8 +36,8 @@ auto rswitch(std::integer_sequence<I, ic...>, i, func, nodefault_t)
   -> std::common_type_t<decltype(func(ic))...>;
 auto rswitch(std::integer_sequence<I, ic...>, i, func, default_func)
   -> std::common_type_t<decltype(func(ic))..., decltype(default_func(i))>;
-auto rswitch(std::integer_sequence ints, i, func)
-  -> std::common_type_t<decltype(func(ic))...>; // = rswitch(ints, i, func, func)
+auto rswitch(std::integer_sequence ints, i, func) // = rswitch(ints, i, func, func)
+  -> std::common_type_t<decltype(func(ic))...>;
 
 } }
 ```
