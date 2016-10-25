@@ -158,16 +158,17 @@ constexpr
 void cswitch(std::integer_sequence<Int, ints...>, I i, Func && func, Default && default_func)
 {
   detail::check_unique_int<Int, ints...>{};
-
-  bool has_ints = false;
-  (void)std::initializer_list<int>{(void(
-    i == ints
-    ? void((std::forward<Func>(func)(std::integral_constant<Int, ints>{}), void(has_ints = true)))
-    : void()
-  ), 1)...};
-  if (!has_ints) {
-    std::forward<Default>(default_func)(i);
-  }
+  [&]{ // msvc...
+    bool has_int = false;
+    (void)std::initializer_list<int>{(void(
+      i == ints
+      ? void((std::forward<Func>(func)(std::integral_constant<Int, ints>{}), void(has_int = true)))
+      : void()
+    ), 1)...};
+    if (!has_int) {
+      std::forward<Default>(default_func)(i);
+    }
+  }();
 }
 
 /// \brief shortcut for \c cswitch(\p ints, \p i, \p func, \p func)
