@@ -220,17 +220,17 @@ auto rswitch(std::integer_sequence<Int, ints...>, I i, Func && func, Default && 
   decltype(std::forward<Func>(func)(std::integral_constant<Int, ints>{}))...
 >
 {
-  auto recursive_last = [&](auto){ return std::forward<Default>(default_func)(i); };
-  auto recursive = [&](auto recf, auto ic, auto ... ics){
+  return [](auto recursive, auto... iic) {
+    return recursive(recursive, iic...);
+  }([&](auto recf, auto ic, auto ... ics){
     return i == ic
       ? std::forward<Func>(func)(ic)
       : select(
           std::integral_constant<bool, bool(sizeof...(ics))>{},
           recf,
-          recursive_last
+          [&](auto){ return std::forward<Default>(default_func)(i); }
       )(recf, ics...);
-  };
-  return recursive(recursive, std::integral_constant<Int, ints>{}...);
+  }, std::integral_constant<Int, ints>{}...);
 }
 
 /// \return \p func(\p ints) if \p i equal \c ints, otherwise \a result_type{}
