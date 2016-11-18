@@ -12,6 +12,7 @@ include(CMakeDefinitions.txt)
 # set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
 
 include_directories(include/)
+include_directories(modules/falcon.cxx/include/)
 
 # aux_source_directory(. SRC_LIST)
 # file(GLOB headers_SRC "*.hpp")

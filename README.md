@@ -8,14 +8,20 @@ VS 2015: [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/g
 ```cpp
 namespace falcon { namespace cstmt {
 
-auto cbool(T) -> std::integral_constant<bool, bool(T::value)>;
+template<T> struct cbool_trait;
+template<> struct cbool_trait<std::true_type> : std::true_type {};
+template<> struct cbool_trait<std::false_type> : std::false_type {};
+
+template<T> using cbool_trait_t = typename cbool_trait<T>::type;
+
+auto cbool(T) -> cbool_trait_t<T>;
 
 auto select(std::true_type, yes, no) -> decltype(yes);
 auto select(std::false_type, yes, no) -> decltype(no);
 auto select(cond, yes, no) -> decltype(select(cbool(cond), yes, no));
 
 auto cif(std::true_type, func_yes) -> decltype(func_yes());
-void cif(std::false_type, func_yes);
+auto cif(std::false_type, func_yes) -> void;
 auto cif(cond, func_yes) -> decltype(cif(cbool(cond), func_yes));
 
 auto cif(std::true_type, func_yes, func_no) -> decltype(func_yes());
@@ -24,20 +30,26 @@ auto cif(cond, func_yes, func_no) -> decltype(cif(cbool(cond), func_yes, func_no
 
 constexpr class nodefault_t {} nodefault;
 
-void cswitch(std::integer_sequence ints, i, func, nodefault_t);
-void cswitch(std::integer_sequence ints, i, func, default_func);
-void cswitch(std::integer_sequence ints, i, func); // = cswitch(ints, i, func, func);
+/// func(ic) if \p i equals \c ic, otherwise \p default_func(\p i)
 
-T rswitch(T, std::integer_sequence ints, i, func, nodefault_t);
-T rswitch(T, std::integer_sequence ints, i, func, default_func);
-T rswitch(T, std::integer_sequence ints, i, func); // = rswitch(T, ints, i, func, func);
+void cswitch(std::integer_sequence<I, ic...> ints, i, func, nodefault_t);
+void cswitch(std::integer_sequence<I, ic...> ints, i, func, default_func);
+void cswitch(std::integer_sequence<I, ic...> ints, i, func); // = cswitch(ints, i, func, func);
 
-auto rswitch(std::integer_sequence<I, ic...>, i, func, nodefault_t)
+T rswitch_or(std::integer_sequence<I, ic...> ints, i, func, T default_value);
+
+auto rswitch(std::integer_sequence<I, ic...> ints, i, func, nodefault_t)
   -> std::common_type_t<decltype(func(ic))...>;
-auto rswitch(std::integer_sequence<I, ic...>, i, func, default_func)
+auto rswitch(std::integer_sequence<I, ic...> ints, i, func, default_func)
   -> std::common_type_t<decltype(func(ic))..., decltype(default_func(i))>;
-auto rswitch(std::integer_sequence ints, i, func) // = rswitch(ints, i, func, func)
-  -> std::common_type_t<decltype(func(ic))...>;
+auto rswitch(std::integer_sequence<I, ic...> ints, i, func) // = rswitch(ints, i, func, func)
+  -> std::common_type_t<decltype(func(ic))..., decltype(func(i))>;
 
 } }
 ```
+
+# Specified owner compile time boolean
+
+Specialize `cbool_trait` or define `cbool(T)` function in the same namespace as `T` ([ADL](http://en.cppreference.com/w/cpp/language/adl)).
+
+`cbool_trait::type` and `cbool` result must be `std::false_type` or `std::true_type`.

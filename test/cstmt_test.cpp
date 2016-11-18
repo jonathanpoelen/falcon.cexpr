@@ -23,6 +23,14 @@ SOFTWARE.
 
 #include <falcon/cstmt.hpp>
 
+class Yes {} yes;
+class No {} no;
+
+namespace falcon { namespace cstmt {
+  template<> struct cbool_trait< ::Yes> : std::true_type {};
+  template<> struct cbool_trait< ::No> : std::false_type {};
+} }
+
 class true_ {} true_;
 class false_ {} false_;
 
@@ -42,16 +50,17 @@ int main()
   std::integral_constant<int, 2> b;
 
   cbool(y) = y;
-  cbool(a) = y;
-  cbool(b) = y;
+  cbool(yes) = y;
   cbool(true_) = y;
   cbool(n) = n;
-  cbool(std::integral_constant<int, 0>{}) = n;
+  cbool(no) = n;
   cbool(false_) = n;
 
   select(y, a, b) = a;
+  select(yes, a, b) = a;
   select(true_, a, b) = a;
   select(n, a, b) = b;
+  select(no, a, b) = b;
   select(false_, a, b) = b;
 
 
@@ -59,10 +68,13 @@ int main()
   auto rb = [b]{ return b; };
 
   cif(y, ra) = a;
+  cif(yes, ra) = a;
   cif(true_, ra) = a;
   cif(y, ra, rb) = a;
+  cif(yes, ra, rb) = a;
   cif(true_, ra, rb) = a;
   t_<decltype(cif(n, ra))>{} = t_<void>{};
+  t_<decltype(cif(no, ra))>{} = t_<void>{};
   t_<decltype(cif(false_, ra))>{} = t_<void>{};
   cif(n, ra, rb) = b;
   cif(false_, ra, rb) = b;
@@ -71,21 +83,22 @@ int main()
   std::integer_sequence<int, 0, 1, 2> ints;
   auto is = [](auto v) { return [v](auto i){ if (i != v) throw 1; return int(i); }; };
   auto xto4 = [](auto) { return 4; };
+  auto throw_ = [](auto){ throw 2; };
 
-  is(0)(rswitch(5, ints, 0, is(0)));
-  is(1)(rswitch(5, ints, 1, is(1)));
-  is(2)(rswitch(5, ints, 2, is(2)));
-  is(3)(rswitch(5, ints, 3, is(3)));
+  cswitch(ints, 0, is(0), throw_);
+  cswitch(ints, 1, is(1), throw_);
+  cswitch(ints, 2, is(2), throw_);
+  cswitch(ints, 3, throw_, is(3));
 
-  is(0)(rswitch(5, ints, 0, is(0), xto4));
-  is(1)(rswitch(5, ints, 1, is(1), xto4));
-  is(2)(rswitch(5, ints, 2, is(2), xto4));
-  is(4)(rswitch(5, ints, 3, is(3), xto4));
+  cswitch(ints, 0, is(0), nodefault);
+  cswitch(ints, 1, is(1), nodefault);
+  cswitch(ints, 2, is(2), nodefault);
+  cswitch(ints, 3, throw_, nodefault);
 
-  is(0)(rswitch(5, ints, 0, is(0), nodefault));
-  is(1)(rswitch(5, ints, 1, is(1), nodefault));
-  is(2)(rswitch(5, ints, 2, is(2), nodefault));
-  is(5)(rswitch(5, ints, 3, is(3), nodefault));
+  is(0)(rswitch_or(ints, 0, is(0), 5));
+  is(1)(rswitch_or(ints, 1, is(1), 5));
+  is(2)(rswitch_or(ints, 2, is(2), 5));
+  is(5)(rswitch_or(ints, 3, is(3), 5));
 
   is(0)(rswitch(ints, 0, is(0)));
   is(1)(rswitch(ints, 1, is(1)));
