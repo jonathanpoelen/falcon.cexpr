@@ -52,65 +52,90 @@ cbool_trait_t<T>
 cbool(T const &) noexcept
 { return {}; }
 
-namespace detail
+
+class select_fn
 {
   template<class True, class False>
-  constexpr True select_(std::true_type, True && yes, False &&)
-  { return std::forward<True>(yes); }
+  static constexpr
+  True
+  _(std::true_type, True && yes, False &&)
+  FALCON_RETURN_NOEXCEPT(
+    std::forward<True>(yes)
+  )
 
   template<class True, class False>
-  constexpr False select_(std::false_type, True &&, False && no)
-  { return std::forward<False>(no); }
-}
+  static constexpr
+  False
+  _(std::false_type, True &&, False && no)
+  FALCON_RETURN_NOEXCEPT(
+    std::forward<False>(no)
+  )
 
-/// \return \p yes if \p cond is a \c true constant expression, otherwise \p no
-template<class B, class True, class False>
-constexpr auto select(B cond, True && yes, False && no)
-FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
-  detail::select_(cbool(cond), std::forward<True>(yes), std::forward<False>(no))
-)
+public:
+  /// \return \p yes if \p cond is a \c true constant expression, otherwise \p no
+  template<class B, class True, class False>
+  constexpr
+  auto
+  operator()(B cond, True && yes, False && no) const
+  FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+    _(cbool(cond), std::forward<True>(yes), std::forward<False>(no))
+  )
+};
+FALCON_SCOPED_INLINE_VARIABLE(select_fn, select)
 
-namespace detail
+
+class cif_fn
 {
   template<class True, class False>
-  constexpr auto cif_(std::true_type, True && yes, False &&)
+  static constexpr
+  auto
+  _(std::true_type, True && yes, False &&)
   FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
     std::forward<True>(yes)()
   )
 
   template<class True, class False>
-  constexpr auto cif_(std::false_type, True &&, False && no)
+  static constexpr
+  auto
+  _(std::false_type, True &&, False && no)
   FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
     std::forward<False>(no)()
   )
 
   template<class True>
-  constexpr
-  auto cif_(std::true_type, True && yes)
+  static constexpr
+  auto
+  _(std::true_type, True && yes)
   FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
     std::forward<True>(yes)()
   )
 
   template<class True>
-  constexpr
-  void cif_(std::false_type, True &&)
+  static constexpr
+  void
+  _(std::false_type, True &&)
   {}
-}
 
-/// \return \p yes() if \p cond is a \c true constant expression, otherwise \p no()
-template<class B, class True, class False>
-constexpr auto cif(B cond, True && yes, False && no)
-FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
-  detail::cif_(cbool(cond), std::forward<True>(yes), std::forward<False>(no))
-)
+public:
+  /// \return \p yes() if \p cond is a \c true constant expression, otherwise \p no()
+  template<class B, class True, class False>
+  constexpr
+  auto
+  operator()(B cond, True && yes, False && no) const
+  FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+    _(cbool(cond), std::forward<True>(yes), std::forward<False>(no))
+  )
 
-/// \return \p yes() if \p cond is a \c true constant expression, otherwise \c void
-template<class B, class True>
-constexpr
-auto cif(B cond, True && yes)
-FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
-  detail::cif_(cbool(cond), std::forward<True>(yes))
-)
+  /// \return \p yes() if \p cond is a \c true constant expression, otherwise \c void
+  template<class B, class True>
+  constexpr
+  auto
+  operator()(B cond, True && yes) const
+  FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+    _(cbool(cond), std::forward<True>(yes))
+  )
+};
+FALCON_SCOPED_INLINE_VARIABLE(cif_fn, cif)
 
 
 struct nodefault_t {
@@ -118,150 +143,208 @@ struct nodefault_t {
 };
 FALCON_SCOPED_INLINE_VARIABLE(nodefault_t, nodefault)
 
+
 namespace detail
 {
   template<class Int, Int... ic>
   class check_unique_int : std::integral_constant<Int, ic>... {};
 }
 
-/// \brief \p func(\c ic) if \p i equals \c ic
-template<class Int, Int... ic, class I, class Func>
-constexpr
-void cswitch(std::integer_sequence<Int, ic...>, I i, Func && func, nodefault_t)
+
+struct cswitch_fn
 {
-  detail::check_unique_int<Int, ic...>{};
-
-  (void)std::initializer_list<int>{(void(
-    ic == i
-    ? void(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))
-    : void()
-  ), 1)...};
-}
-
-/// \brief \p func(\c ic) if \p i equals \c ic, otherwise \p default_func(\p i)
-template<class Int, Int... ic, class I, class Func, class Default>
-constexpr
-void cswitch(std::integer_sequence<Int, ic...>, I i, Func && func, Default && default_func)
-{
-  detail::check_unique_int<Int, ic...>{};
-
-  bool has_int = false;
-  (void)std::initializer_list<int>{(void(
-    ic == i
-    ? void((std::forward<Func>(func)(std::integral_constant<Int, ic>{}), void(has_int = true)))
-    : void()
-  ), 1)...};
-  if (!has_int) {
-    std::forward<Default>(default_func)(i);
-  }
-}
-
-/// \brief shortcut for \c cswitch(\p ints, \p i, \p func, \p func)
-template<class Ints, class I, class Func>
-constexpr
-void cswitch(Ints ints, I i, Func && func)
-{ cswitch(ints, i, std::forward<Func>(func), std::forward<Func>(func)); }
-
-
-namespace detail
-{
-  template<class R, class Int, class I, class Func, class Default>
+  /// \brief \p func(\c ic) if \p i equals \c ic
+  template<class Int, Int... ic, class I, class Func>
   constexpr
-  R rswitch_(std::integer_sequence<Int>, I i, Func &&, Default && default_func)
+  void
+  operator()(
+    std::integer_sequence<Int, ic...>,
+    I i, Func && func, nodefault_t
+  ) const
   {
-    return std::forward<Default>(default_func)(i);
+    detail::check_unique_int<Int, ic...>{};
+
+    (void)std::initializer_list<int>{(void(
+      ic == i
+      ? void(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))
+      : void()
+    ), 1)...};
   }
 
-  template<class R, class Int, Int ic, Int... ints, class I, class Func, class Default>
+  /// \brief \p func(\c ic) if \p i equals \c ic, otherwise \p default_func(\p i)
+  template<class Int, Int... ic, class I, class Func, class Default>
   constexpr
-  R rswitch_(std::integer_sequence<Int, ic, ints...>, I i, Func && func, Default && default_func)
+  void
+  operator()(
+    std::integer_sequence<Int, ic...>,
+    I i, Func && func, Default && default_func
+  ) const
+  {
+    detail::check_unique_int<Int, ic...>{};
+
+    bool has_int = false;
+    (void)std::initializer_list<int>{(void(
+      ic == i
+      ? void((std::forward<Func>(func)(std::integral_constant<Int, ic>{}), void(has_int = true)))
+      : void()
+    ), 1)...};
+    if (!has_int) {
+      std::forward<Default>(default_func)(i);
+    }
+  }
+
+  /// \brief shortcut for \c cswitch(\p ints, \p i, \p func, \p func)
+  template<class Ints, class I, class Func>
+  constexpr
+  void
+  operator()(Ints ints, I i, Func && func) const
+  { operator()(ints, i, std::forward<Func>(func), std::forward<Func>(func)); }
+};
+FALCON_SCOPED_INLINE_VARIABLE(cswitch_fn, cswitch)
+
+
+struct rswitch_fn
+{
+  /// \return \p func(\p ic) if \p i equals \c ic, otherwise \p default_func(\p i)
+  template<class Int, Int... ic, class I, class Func, class Default>
+  constexpr
+  auto
+  operator()(
+    std::integer_sequence<Int, ic...> ints,
+    I i, Func && func, Default && default_func
+  ) const
+  -> std::common_type_t<
+    decltype(std::forward<Default>(default_func)(i)),
+    decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
+  >
+  {
+    detail::check_unique_int<Int, ic...>{};
+
+    return _<std::common_type_t<
+      decltype(std::forward<Default>(default_func)(i)),
+      decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
+    >>(ints, i, std::forward<Func>(func), std::forward<Default>(default_func));
+  }
+
+  /// \return \p func(\p ic) if \p i equals \c ic, otherwise \a result_type{}
+  template<class Int, Int... ic, class I, class Func>
+  constexpr
+  auto
+  operator()(
+    std::integer_sequence<Int, ic...> ints,
+    I i, Func && func, nodefault_t
+  ) const
+  -> std::common_type_t<
+    decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
+  >
+  {
+    detail::check_unique_int<Int, ic...>{};
+
+    return _<std::common_type_t<
+      decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
+    >>(ints, i, std::forward<Func>(func));
+  }
+
+  /// \brief shortcut for \c rswitch(\c ints, \p i, \p func, \p func)
+  template<class Int, Int... ic, class I, class Func>
+  constexpr
+  auto
+  operator()(
+    std::integer_sequence<Int, ic...> ints,
+    I i, Func && func
+  ) const
+  -> std::common_type_t<
+    decltype(std::forward<Func>(func)(i)),
+    decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
+  >
+  {
+    detail::check_unique_int<Int, ic...>{};
+
+    return _<std::common_type_t<
+      decltype(std::forward<Func>(func)(i)),
+      decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
+    >>(ints, i, std::forward<Func>(func), std::forward<Func>(func));
+  }
+
+private:
+  template<class R, class Int, class I, class Func, class DefaultFunc>
+  static constexpr
+  R
+  _(std::integer_sequence<Int>, I i, Func &&, DefaultFunc && default_func)
+  {
+    return std::forward<DefaultFunc>(default_func)(i);
+  }
+
+  template<class R, class Int, Int ic, Int... ints, class I, class Func, class DefaultFunc>
+  static constexpr
+  R
+  _(std::integer_sequence<Int, ic, ints...>, I i, Func && func, DefaultFunc && default_func)
   {
     return ic == i
       ? std::forward<Func>(func)(ic)
-      : rswitch_<R>(
+      : _<R>(
         std::integer_sequence<Int, ints...>{},
         i,
         std::forward<Func>(func),
-        std::forward<Default>(default_func)
+        std::forward<DefaultFunc>(default_func)
       );
   }
 
   template<class R, class Int, class I, class Func>
-  constexpr
-  R rswitch_(std::integer_sequence<Int>, I, Func &&)
+  static constexpr
+  R
+  _(std::integer_sequence<Int>, I, Func &&)
   {
     return R{};
   }
 
   template<class R, class Int, Int ic, Int... ints, class I, class Func>
-  constexpr
-  R rswitch_(std::integer_sequence<Int, ic, ints...>, I i, Func && func)
+  static constexpr
+  R
+  _(std::integer_sequence<Int, ic, ints...>, I i, Func && func)
   {
     return ic == i
       ? std::forward<Func>(func)(ic)
-      : rswitch_<R>(
+      : _<R>(
         std::integer_sequence<Int, ints...>{},
         i,
         std::forward<Func>(func)
       );
   }
-}
+
+  friend class rswitch_or_fn;
+};
+FALCON_SCOPED_INLINE_VARIABLE(rswitch_fn, rswitch)
 
 
-/// \return \p func(\p ic) if \p i equals \c ic, otherwise \p default_func(\p i)
-template<class Int, Int... ic, class I, class Func, class Default>
-constexpr
-auto rswitch(std::integer_sequence<Int, ic...> ints, I i, Func && func, Default && default_func)
--> std::common_type_t<
-  decltype(std::forward<Default>(default_func)(i)),
-  decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
->
-{
-  detail::check_unique_int<Int, ic...>{};
-
-  return detail::rswitch_<std::common_type_t<
-    decltype(std::forward<Default>(default_func)(i)),
-    decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
-  >>(ints, i, std::forward<Func>(func), std::forward<Default>(default_func));
-}
-
-/// \return \p func(\p ic) if \p i equals \c ic, otherwise \a result_type{}
-template<class Int, Int... ic, class I, class Func>
-constexpr
-auto rswitch(std::integer_sequence<Int, ic...> ints, I i, Func && func, nodefault_t)
--> std::common_type_t<
-  decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
->
-{
-  detail::check_unique_int<Int, ic...>{};
-
-  return detail::rswitch_<std::common_type_t<
-    decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
-  >>(ints, i, std::forward<Func>(func));
-}
-
-/// \brief shortcut for \c rswitch(\c ints, \p i, \p func, \p func)
-template<class Int, Int... ic, class I, class Func>
-constexpr
-auto rswitch(std::integer_sequence<Int, ic...> ints, I i, Func && func)
--> std::common_type_t<
-  decltype(std::forward<Func>(func)(i)),
-  decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
->
-{
-  detail::check_unique_int<Int, ic...>{};
-
-  return detail::rswitch_<std::common_type_t<
-    decltype(std::forward<Func>(func)(i)),
-    decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
-  >>(ints, i, std::forward<Func>(func), std::forward<Func>(func));
-}
-
-
-namespace detail
+class rswitch_or_fn
 {
   template<class T>
-  struct rswitch_default_value_fn
+  struct default_value_fn;
+
+public:
+  /// \brief \p default_value = \p func(\c ic) if \p i equals \c ic
+  /// \return \p default_value
+  template<class T, class Int, Int... ic, class I, class Func>
+  constexpr
+  std::decay_t<T>
+  operator()(
+    std::integer_sequence<Int, ic...> ints,
+    I i, Func && func, T && default_value
+  ) const
+  {
+    detail::check_unique_int<Int, ic...>{};
+
+    return rswitch_fn::_<T>(
+      ints, i,
+      std::forward<Func>(func),
+      default_value_fn<T>{default_value}
+    );
+  }
+
+private:
+  template<class T>
+  struct default_value_fn
   {
     T & x;
 
@@ -270,22 +353,7 @@ namespace detail
     operator()(I)
     { return std::forward<T>(x); }
   };
-}
-
-
-/// \brief \p default_value = \p func(\c ic) if \p i equals \c ic
-/// \return \p default_value
-template<class T, class Int, Int... ic, class I, class Func>
-std::decay_t<T>
-rswitch_or(std::integer_sequence<Int, ic...> ints, I i, Func && func, T && default_value)
-{
-  detail::check_unique_int<Int, ic...>{};
-
-  return detail::rswitch_<T>(
-    ints, i,
-    std::forward<Func>(func),
-    detail::rswitch_default_value_fn<T>{default_value}
-  );
-}
+};
+FALCON_SCOPED_INLINE_VARIABLE(rswitch_or_fn, rswitch_or)
 
 } }
