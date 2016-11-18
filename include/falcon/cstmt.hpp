@@ -233,6 +233,8 @@ auto rswitch(std::integer_sequence<Int, ic...> ints, I i, Func && func, Default 
   decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
 >
 {
+  detail::check_unique_int<Int, ic...>{};
+
   return detail::rswitch_<std::common_type_t<
     decltype(std::forward<Default>(default_func)(i)),
     decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
@@ -247,6 +249,8 @@ auto rswitch(std::integer_sequence<Int, ic...> ints, I i, Func && func, nodefaul
   decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
 >
 {
+  detail::check_unique_int<Int, ic...>{};
+
   return detail::rswitch_<std::common_type_t<
     decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
   >>(ints, i, std::forward<Func>(func));
@@ -261,6 +265,8 @@ auto rswitch(std::integer_sequence<Int, ic...> ints, I i, Func && func)
   decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
 >
 {
+  detail::check_unique_int<Int, ic...>{};
+
   return detail::rswitch_<std::common_type_t<
     decltype(std::forward<Func>(func)(i)),
     decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
