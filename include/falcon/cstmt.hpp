@@ -163,22 +163,6 @@ void cswitch(Ints ints, I i, Func && func)
 { cswitch(ints, i, std::forward<Func>(func), std::forward<Func>(func)); }
 
 
-/// \brief \p default_value = \p func(\c ic) if \p i equals \c ic
-/// \return \p default_value
-template<class T, class Int, Int... ic, class I, class Func>
-T rswitch_or(std::integer_sequence<Int, ic...>, I i, Func && func, T default_value)
-{
-  detail::check_unique_int<Int, ic...>{};
-
-  (void)std::initializer_list<int>{(void(
-    ic == i
-    ? void(default_value = std::forward<Func>(func)(std::integral_constant<Int, ic>{}))
-    : void()
-  ), 1)...};
-
-  return default_value;
-}
-
 namespace detail
 {
   template<class R, class Int, class I, class Func, class Default>
@@ -271,6 +255,37 @@ auto rswitch(std::integer_sequence<Int, ic...> ints, I i, Func && func)
     decltype(std::forward<Func>(func)(i)),
     decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
   >>(ints, i, std::forward<Func>(func), std::forward<Func>(func));
+}
+
+
+namespace detail
+{
+  template<class T>
+  struct rswitch_default_value_fn
+  {
+    T & x;
+
+    template<class I>
+    std::remove_reference_t<T>
+    operator()(I)
+    { return std::forward<T>(x); }
+  };
+}
+
+
+/// \brief \p default_value = \p func(\c ic) if \p i equals \c ic
+/// \return \p default_value
+template<class T, class Int, Int... ic, class I, class Func>
+std::decay_t<T>
+rswitch_or(std::integer_sequence<Int, ic...> ints, I i, Func && func, T && default_value)
+{
+  detail::check_unique_int<Int, ic...>{};
+
+  return detail::rswitch_<T>(
+    ints, i,
+    std::forward<Func>(func),
+    detail::rswitch_default_value_fn<T>{default_value}
+  );
 }
 
 } }
