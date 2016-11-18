@@ -48,7 +48,7 @@ auto rswitch(std::integer_sequence<I, ic...> ints, i, func) // = rswitch(ints, i
 } }
 ```
 
-# Specified owner compile time boolean
+# Boolean user type support
 
 Specialize `cbool_trait` or define `cbool(T)` function in the same namespace as `T` ([ADL](http://en.cppreference.com/w/cpp/language/adl)).
 
