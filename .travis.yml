@@ -1,6 +1,9 @@
 sudo: false
 language: cpp
 
+branches:
+  except: /msvc.*/
+
 # More complete test matrix
 matrix:
   include:

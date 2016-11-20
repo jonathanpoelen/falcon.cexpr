@@ -137,5 +137,7 @@ int main()
 
   rswitch(ints, a, rself, nodefault) = a;
   rswitch(ints, b, rself, nodefault) = b;
+#ifdef _MSC_VER) // (`x ? a : b` bug)
   is(0)(rswitch(ints, c, rself, nodefault));
+#endif
 }
