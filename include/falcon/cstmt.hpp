@@ -276,12 +276,24 @@ struct rswitch_fn
   }
 
   /// \return \p func(\p ic) if \p i equals \c ic, otherwise \a result_type{}
-  template<class Int, Int... ic, class I, class Func>
+  template<class Int, Int... ic, class I, class Func
+#ifdef __clang__
+  , class DefaultFunc
+  , class = std::enable_if_t<
+      (std::is_same<std::decay_t<DefaultFunc>, nodefault_t>::value)
+    >
+#endif
+  >
   constexpr
   auto
   operator()(
     std::integer_sequence<Int, ic...> ints,
-    I i, Func && func, nodefault_t
+    I i, Func && func,
+#ifdef __clang__
+    DefaultFunc &&
+#else
+    nodefault_t
+#endif
   ) const
   -> std::common_type_t<
     decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
@@ -317,7 +329,13 @@ struct rswitch_fn
 
 
   /// \return \p func(\p ic) if \p i equals \c ic, otherwise \p default_func(\p i)
-  template<class Int, Int... ic, class I, I i, class Func, class DefaultFunc>
+  template<class Int, Int... ic, class I, I i, class Func, class DefaultFunc
+#ifdef __clang__
+  , class = std::enable_if_t<
+      (!std::is_same<std::decay_t<DefaultFunc>, nodefault_t>::value)
+    >
+#endif
+  >
   constexpr
   auto
   operator()(
@@ -340,13 +358,25 @@ private:
 
 public:
   /// \return \p func(\p ic) if \p i equals \c ic, otherwise \a result_type{}
-  template<class Int, Int... ic, class I, I i, class Func>
+  template<class Int, Int... ic, class I, I i, class Func
+#ifdef __clang__
+  , class DefaultFunc
+  , class = std::enable_if_t<
+      (std::is_same<std::decay_t<DefaultFunc>, nodefault_t>::value)
+    >
+#endif
+>
   constexpr
   auto
   operator()(
     std::integer_sequence<Int, ic...>,
     std::integral_constant<I, i> ii,
-    Func && func, nodefault_t
+    Func && func,
+#ifdef __clang__
+    DefaultFunc &&
+#else
+    nodefault_t
+#endif
   ) const
   FALCON_DECLTYPE_AUTO_RETURN(
     void(detail::check_unique_int<Int, ic...>{}),
