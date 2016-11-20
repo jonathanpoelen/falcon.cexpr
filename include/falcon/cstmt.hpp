@@ -365,7 +365,7 @@ public:
     )(ii)
   )
 
-  /// \brief shortcut for \c rswitch(\c ints, \p i, \p func, \p func)
+  /// \brief call \p func(\p i)
   template<class Int, Int... ic, class I, I i, class Func>
   constexpr
   auto
@@ -475,7 +475,6 @@ class rswitch_or_fn
 
 public:
   /// \brief \p default_value = \p func(\c ic) if \p i equals \c ic
-  /// \return \p default_value
   template<class T, class Int, Int... ic, class I, class Func>
   constexpr
   std::decay_t<T>
@@ -494,7 +493,6 @@ public:
   }
 
   /// \brief \p default_value = \p func(\c ic) if \p i equals \c ic
-  /// \return \p default_value
   template<class T, class Int, Int... ic, class I, I i, class Func>
   constexpr
   std::decay_t<T>

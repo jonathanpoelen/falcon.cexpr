@@ -45,6 +45,21 @@ auto rswitch(std::integer_sequence<I, ic...> ints, i, func, default_func)
 auto rswitch(std::integer_sequence<I, ic...> ints, i, func) // = rswitch(ints, i, func, func)
   -> std::common_type_t<decltype(func(ic))..., decltype(func(i))>;
 
+auto rswitch(std::integer_sequence<I, ic...> ints, std::integral_constant<II, i>, func, nodefault_t)
+  -> decltype(select(
+    contains<i, ic...>{},
+    std::forward<Func>(func),
+    lazy<std::common_type_t<decltype(func(ic))...>>{}
+  )(i));
+auto rswitch(std::integer_sequence<I, ic...> ints, std::integral_constant<II, i>, func, default_func)
+  -> decltype(select(
+    contains<i, ic...>{},
+    std::forward<Func>(func),
+    std::forward<DefaultFunc>(default_func)
+  )(i));
+auto rswitch(std::integer_sequence<I, ic...> ints, i, func) // = rswitch(ints, i, func, func)
+  -> decltype(func(i));
+
 } }
 ```
 
