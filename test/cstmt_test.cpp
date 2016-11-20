@@ -39,6 +39,8 @@ inline std::false_type cbool(class false_) { return {}; }
 
 template<class> class t_ {};
 
+template<class T> struct inherit : T {};
+
 int main()
 {
   using namespace falcon::cstmt;
@@ -52,9 +54,11 @@ int main()
   cbool(y) = y;
   cbool(yes) = y;
   cbool(true_) = y;
+  cbool(inherit<std::true_type>{}) = y;
   cbool(n) = n;
   cbool(no) = n;
   cbool(false_) = n;
+  cbool(inherit<std::false_type>{}) = n;
 
   select(y, a, b) = a;
   select(yes, a, b) = a;
@@ -81,7 +85,7 @@ int main()
 
 
   std::integer_sequence<int, 0, 1, 2> ints;
-  auto is = [](auto v) { return [v](auto i){ if (i != v) throw 1; return int(i); }; };
+  auto is = [](auto v) { return [v](auto i){ if (i != v) throw 1; return i; }; };
   auto xto4 = [](auto) { return 4; };
   auto throw_ = [](auto){ throw 2; };
 
@@ -114,4 +118,24 @@ int main()
   is(1)(rswitch(ints, 1, is(1), nodefault));
   is(2)(rswitch(ints, 2, is(2), nodefault));
   is(0)(rswitch(ints, 3, is(3), nodefault));
+
+  auto rself = [](auto x) { return x; };
+  auto set = [](auto v) { return [v](auto i) mutable { v = i; }; };
+  std::integral_constant<int, 3> c;
+
+  cswitch(ints, a, set(a));
+  cswitch(ints, b, set(b));
+  cswitch(ints, c, set(c));
+
+  rswitch(ints, a, rself) = a;
+  rswitch(ints, b, rself) = b;
+  rswitch(ints, c, rself) = c;
+
+  rswitch(ints, a, rself, throw_) = a;
+  rswitch(ints, b, rself, throw_) = b;
+  rswitch(ints, c, throw_, rself) = c;
+
+  rswitch(ints, a, rself, nodefault) = a;
+  rswitch(ints, b, rself, nodefault) = b;
+  is(0)(rswitch(ints, c, rself, nodefault));
 }
