@@ -159,7 +159,8 @@ namespace detail
   template<class Int, Int... ic>
   class check_unique_int : std::integral_constant<Int, ic>... {};
 
-  struct noop { template<class T> constexpr void operator()(T) noexcept { } };
+  struct noop
+  { template<class T> constexpr void operator()(T) const noexcept { } };
 
   template<class I, class Ints, I i, Ints... ic>
   using not_contains_int = typename std::is_same<
@@ -190,25 +191,32 @@ struct cswitch_fn
   }
 
   /// \brief \p func(\c ic) if \p i equals \c ic, otherwise \p default_func(\p i)
-  template<class Int, Int... ic, class I, class Func, class Default>
+  template<class Int, Int... ic, class I, class Func, class DefaultFunc>
   constexpr
   void
   operator()(
     std::integer_sequence<Int, ic...>,
-    I i, Func && func, Default && default_func
+    I i, Func && func, DefaultFunc && default_func
   ) const
   {
     detail::check_unique_int<Int, ic...>{};
 
+#if defined(_MSC_VER) && _MSC_VER < 1910
+    [&]{
+#endif
     bool has_int = false;
     (void)std::initializer_list<int>{(void(
       ic == i
       ? void((std::forward<Func>(func)(std::integral_constant<Int, ic>{}), void(has_int = true)))
       : void()
     ), 1)...};
+
     if (!has_int) {
-      std::forward<Default>(default_func)(i);
+      std::forward<DefaultFunc>(default_func)(i);
     }
+#if defined(_MSC_VER) && _MSC_VER < 1910
+    }();
+#endif
   }
 
   /// \brief shortcut for \c cswitch(\p ints, \p i, \p func, \p func)
@@ -255,45 +263,33 @@ FALCON_SCOPED_INLINE_VARIABLE(cswitch_fn, cswitch)
 struct rswitch_fn
 {
   /// \return \p func(\p ic) if \p i equals \c ic, otherwise \p default_func(\p i)
-  template<class Int, Int... ic, class I, class Func, class Default>
+  template<class Int, Int... ic, class I, class Func, class DefaultFunc>
   constexpr
   auto
   operator()(
     std::integer_sequence<Int, ic...> ints,
-    I i, Func && func, Default && default_func
+    I i, Func && func, DefaultFunc && default_func
   ) const
   -> std::common_type_t<
-    decltype(std::forward<Default>(default_func)(i)),
+    decltype(std::forward<DefaultFunc>(default_func)(i)),
     decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
   >
   {
     detail::check_unique_int<Int, ic...>{};
 
     return _<std::common_type_t<
-      decltype(std::forward<Default>(default_func)(i)),
+      decltype(std::forward<DefaultFunc>(default_func)(i)),
       decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
-    >>(ints, i, std::forward<Func>(func), std::forward<Default>(default_func));
+    >>(ints, i, std::forward<Func>(func), std::forward<DefaultFunc>(default_func));
   }
 
   /// \return \p func(\p ic) if \p i equals \c ic, otherwise \a result_type{}
-  template<class Int, Int... ic, class I, class Func
-#ifdef __clang__
-  , class DefaultFunc
-  , class = std::enable_if_t<
-      (std::is_same<std::decay_t<DefaultFunc>, nodefault_t>::value)
-    >
-#endif
-  >
+  template<class Int, Int... ic, class I, class Func>
   constexpr
   auto
   operator()(
     std::integer_sequence<Int, ic...> ints,
-    I i, Func && func,
-#ifdef __clang__
-    DefaultFunc &&
-#else
-    nodefault_t
-#endif
+    I i, Func && func, nodefault_t
   ) const
   -> std::common_type_t<
     decltype(std::forward<Func>(func)(std::integral_constant<Int, ic>{}))...
@@ -329,13 +325,7 @@ struct rswitch_fn
 
 
   /// \return \p func(\p ic) if \p i equals \c ic, otherwise \p default_func(\p i)
-  template<class Int, Int... ic, class I, I i, class Func, class DefaultFunc
-#ifdef __clang__
-  , class = std::enable_if_t<
-      (!std::is_same<std::decay_t<DefaultFunc>, nodefault_t>::value)
-    >
-#endif
-  >
+  template<class Int, Int... ic, class I, I i, class Func, class DefaultFunc>
   constexpr
   auto
   operator()(
@@ -358,25 +348,13 @@ private:
 
 public:
   /// \return \p func(\p ic) if \p i equals \c ic, otherwise \a result_type{}
-  template<class Int, Int... ic, class I, I i, class Func
-#ifdef __clang__
-  , class DefaultFunc
-  , class = std::enable_if_t<
-      (std::is_same<std::decay_t<DefaultFunc>, nodefault_t>::value)
-    >
-#endif
->
+  template<class Int, Int... ic, class I, I i, class Func>
   constexpr
   auto
   operator()(
     std::integer_sequence<Int, ic...>,
     std::integral_constant<I, i> ii,
-    Func && func,
-#ifdef __clang__
-    DefaultFunc &&
-#else
-    nodefault_t
-#endif
+    Func && func, nodefault_t
   ) const
   FALCON_DECLTYPE_AUTO_RETURN(
     void(detail::check_unique_int<Int, ic...>{}),
@@ -404,17 +382,41 @@ public:
   }
 
 private:
+#if defined(__GNUC__) && !defined(__clang__)
   template<class Func, class Int, Int... ic>
   struct make_common_type_fn
+  {
+    template<class I>
+    constexpr
+    auto
+    operator()(I) const
+    FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+      std::common_type_t<
+        decltype(std::declval<Func>()(std::integral_constant<Int, ic>{}))...
+      >{}
+    )
+  };
+#else
+  template<class, class Func, class Int, Int... ic>
+  struct result_common_type
   {
     using result_type = std::common_type_t<
       decltype(std::declval<Func>()(std::integral_constant<Int, ic>{}))...
     >;
-
-    template<class I>
-    constexpr result_type operator()(I) noexcept
-    { return result_type{}; }
   };
+
+  template<class Func, class Int, Int... ic>
+  struct make_common_type_fn
+  {
+    template<class I>
+    constexpr
+    auto
+    operator()(I) const
+    FALCON_DECLTYPE_AUTO_RETURN_NOEXCEPT(
+      typename result_common_type<I, Func, Int, ic...>::type{}
+    )
+  };
+#endif
 
   template<class R, class Int, class I, class Func, class DefaultFunc>
   static constexpr

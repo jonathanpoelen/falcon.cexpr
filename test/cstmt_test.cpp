@@ -85,7 +85,7 @@ int main()
 
 
   std::integer_sequence<int, 0, 1, 2> ints;
-  auto is = [](auto v) { return [v](auto i){ if (i != v) throw 1; return i; }; };
+  auto is = [](auto v) { return [v](auto i){ if (i != v) throw 1; return int(i); }; };
   auto xto4 = [](auto) { return 4; };
   auto throw_ = [](auto){ throw 2; };
 
@@ -119,13 +119,19 @@ int main()
   is(2)(rswitch(ints, 2, is(2), nodefault));
   is(0)(rswitch(ints, 3, is(3), nodefault));
 
-  auto rself = [](auto x) { return x; };
   auto set = [](auto v) { return [v](auto i) mutable { v = i; }; };
   std::integral_constant<int, 3> c;
 
   cswitch(ints, a, set(a));
   cswitch(ints, b, set(b));
   cswitch(ints, c, set(c));
+
+  is(1)(rswitch_or(ints, a, is(1), 5));
+  is(2)(rswitch_or(ints, b, is(2), 5));
+  is(5)(rswitch_or(ints, c, is(3), 5));
+
+#ifndef _MSC_VER // (`x ? a : b` bug)
+  auto rself = [](auto x) { return x; };
 
   rswitch(ints, a, rself) = a;
   rswitch(ints, b, rself) = b;
@@ -137,7 +143,18 @@ int main()
 
   rswitch(ints, a, rself, nodefault) = a;
   rswitch(ints, b, rself, nodefault) = b;
-#ifdef _MSC_VER) // (`x ? a : b` bug)
   is(0)(rswitch(ints, c, rself, nodefault));
+#else
+  is(1)(rswitch(ints, a, is(1)));
+  is(2)(rswitch(ints, b, is(2)));
+  is(3)(rswitch(ints, c, is(3)));
+
+  is(1)(rswitch(ints, a, is(1), xto4));
+  is(2)(rswitch(ints, b, is(2), xto4));
+  is(3)(rswitch(ints, c, xto4, is(3)));
+
+  is(1)(rswitch(ints, a, is(1), nodefault));
+  is(2)(rswitch(ints, b, is(2), nodefault));
+  is(0)(rswitch(ints, c, is(3), nodefault));
 #endif
 }
