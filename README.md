@@ -14,6 +14,8 @@ template<> struct cbool_trait<std::false_type> : std::false_type {};
 
 template<T> using cbool_trait_t = typename cbool_trait<T>::type;
 
+template<T> constexpr auto cbool_trait_v = cbool_trait_t<T>{}; // c++14
+
 auto cbool(T) -> cbool_trait_t<T>;
 
 auto select(std::true_type, yes, no) -> decltype(yes);
