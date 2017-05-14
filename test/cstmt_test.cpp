@@ -157,4 +157,9 @@ int main()
   is(2)(rswitch(ints, b, is(2), nodefault));
   is(0)(rswitch(ints, c, is(3), nodefault));
 #endif
+
+  auto ithrow = [](auto) -> int { throw 2; };
+  rswitch(ints, 1, is(1), ithrow);
+  rswitch(ints, 2, is(2), ithrow);
+  rswitch(ints, 5, ithrow, is(5));
 }

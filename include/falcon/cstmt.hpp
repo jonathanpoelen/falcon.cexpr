@@ -600,13 +600,15 @@ namespace detail
   {
     check_unique_int<Int, ic...>{};
 
-    using is_void = typename std::is_same<void, T>::type;
+    using result_type = rswitch_result_with_i_t<
+      T, Func, DefaultFunc, I, i, Int, ic...>;
+    using is_void = typename std::is_same<void, result_type>::type;
 
-    return select(
+    return rswitch_fn(is_void{}, select(
       not_contains_int<I, Int, i, ic...>{},
-      rswitch_fn(is_void{}, std::forward<DefaultFunc>(default_func)),
-      rswitch_fn(is_void{}, std::forward<Func>(func))
-    )(ii);
+      std::forward<DefaultFunc>(default_func),
+      std::forward<Func>(func)
+    ))(ii);
   }
 }
 
