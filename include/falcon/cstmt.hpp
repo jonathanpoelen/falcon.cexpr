@@ -125,29 +125,53 @@ FALCON_SCOPED_INLINE_VARIABLE(nodefault_t, nodefault)
 
 namespace detail
 {
-  template<class T>
+  template<class T, class I>
   struct rswitch_result
   {
-    template<class Func, class DefaultFunc, class I, class Int, Int... ic>
+    template<class Func, class DefaultFunc, class Int, Int... ic>
     using type = T;
-
-    template<class Func, class DefaultFunc, class I, I i, class Int, Int... ic>
-    using type_with_i = T;
   };
 
   class auto_;
 
+  template<class I, class Ints, I i, Ints... ic>
+  struct not_contains_int_impl
+  {
+    using type = typename std::is_same<
+      std::integer_sequence<bool, (ic == i)...>,
+      std::integer_sequence<bool, ((void)ic, false)...>
+    >::type;
+  };
+
+  template<class I, class Ints, I i, Ints... ic>
+  using not_contains_int = typename not_contains_int_impl<I, Ints, i, ic...>::type;
+
+  template<class I>
+  struct rswitch_result<auto_, I>
+  {
+    template<class Func, class DefaultFunc, class Int, Int... ic>
+    using type = std::common_type_t<
+      decltype(std::declval<DefaultFunc>()(std::declval<I>())),
+      decltype(std::declval<Func>()(std::integral_constant<Int, ic>{}))...
+    >;
+  };
+
+  template<class I, I i>
+  struct rswitch_result<auto_, std::integral_constant<I, i>>
+  {
+    template<class Func, class DefaultFunc, class Int, Int... ic>
+    using type = decltype(select(
+      not_contains_int<I, Int, i, ic...>{},
+      std::declval<DefaultFunc>(),
+      std::declval<Func>()
+    )(std::integral_constant<I, i>{}));
+  };
+
   template<
     class T, class Func, class DefaultFunc, class I, class Int, Int... ic>
   using rswitch_result_t
-    = typename rswitch_result<T>
-    ::template type<Func&&, DefaultFunc&&, I, Int, ic...>;
-
-  template<
-    class T, class Func, class DefaultFunc, class I, I i, class Int, Int... ic>
-  using rswitch_result_with_i_t
-    = typename rswitch_result<T>
-    ::template type_with_i<Func&&, DefaultFunc&&, I, i, Int, ic...>;
+    = typename rswitch_result<T, I>
+      ::template type<Func&&, DefaultFunc&&, Int, ic...>;
 
   template<
     class T, class Int, Int... ic, class I, class Func, class DefaultFunc>
@@ -159,7 +183,7 @@ namespace detail
 
   template<
     class T, class Int, Int... ic, class I, I i, class Func, class DefaultFunc>
-  constexpr rswitch_result_with_i_t<T, Func, DefaultFunc, I, i, Int, ic...>
+  constexpr rswitch_result_t<T, Func, DefaultFunc, std::integral_constant<I, i>, Int, ic...>
   rswitch(
     std::integer_sequence<Int, ic...> ints,
     std::integral_constant<I, i> ii,
@@ -232,6 +256,26 @@ namespace detail
     constexpr void operator()(U const &) const noexcept
     {}
   };
+
+  template<class Int, Int... ic, class Func, class DefaultFunc>
+  DefaultFunc && wrap_default_func(
+    std::integer_sequence<Int, ic...>,
+    Func &&, DefaultFunc && default_func
+  )
+  {
+    return std::forward<DefaultFunc>(default_func);
+  }
+
+  template<class Int, Int... ic, class Func>
+  auto wrap_default_func(
+    std::integer_sequence<Int, ic...>,
+    Func && func, nodefault_t
+  ) -> detail::make_value<std::common_type_t<decltype(
+    std::forward<Func>(func)(std::integral_constant<Int, ic>{})
+  )...>>
+  {
+    return {};
+  }
 }
 
 struct rswitch_fn
@@ -246,23 +290,11 @@ struct rswitch_fn
     detail::rswitch<detail::auto_>(
       ints, i,
       std::forward<Func>(func),
-      std::forward<DefaultFunc>(default_func)
-    )
-  )
-
-  /// \return \p func(\p ic) if \p i equals \c ic, otherwise \a result_type{}
-  template<class Int, Int... ic, class I, class Func>
-  constexpr auto operator()(
-    std::integer_sequence<Int, ic...> ints,
-    I i, Func && func, nodefault_t
-  ) const
-  FALCON_DECLTYPE_AUTO_RETURN(
-    detail::rswitch<detail::auto_>(
-      ints, i,
-      std::forward<Func>(func),
-      detail::make_value<std::common_type_t<decltype(
-        std::forward<Func>(func)(std::integral_constant<Int, ic>{})
-      )...>>()
+      detail::wrap_default_func(
+        ints,
+        std::forward<Func>(func),
+        std::forward<DefaultFunc>(default_func)
+      )
     )
   )
 
@@ -545,30 +577,6 @@ namespace detail
   class check_unique_int : std::integral_constant<Int, ic>... {};
 
 
-  template<class I, class Ints, I i, Ints... ic>
-  using not_contains_int = typename std::is_same<
-    std::integer_sequence<bool, (ic == i)...>,
-    std::integer_sequence<bool, ((void)ic, false)...>
-  >::type;
-
-  template<>
-  struct rswitch_result<auto_>
-  {
-    template<class Func, class DefaultFunc, class I, class Int, Int... ic>
-    using type = std::common_type_t<
-      decltype(std::declval<DefaultFunc>()(std::declval<I>())),
-      decltype(std::declval<Func>()(std::integral_constant<Int, ic>{}))...
-    >;
-
-    template<class Func, class DefaultFunc, class I, I i, class Int, Int... ic>
-    using type_with_i = decltype(select(
-      not_contains_int<I, Int, i, ic...>{},
-      std::declval<DefaultFunc>(),
-      std::declval<Func>()
-    )(std::integral_constant<I, i>{}));
-  };
-
-
   template<
     class T, class Int, Int... ic, class I, class Func, class DefaultFunc>
   constexpr rswitch_result_t<T, Func, DefaultFunc, I, Int, ic...>
@@ -591,7 +599,7 @@ namespace detail
 
   template<
     class T, class Int, Int... ic, class I, I i, class Func, class DefaultFunc>
-  constexpr rswitch_result_with_i_t<T, Func, DefaultFunc, I, i, Int, ic...>
+  constexpr rswitch_result_t<T, Func, DefaultFunc, std::integral_constant<I, i>, Int, ic...>
   rswitch(
     std::integer_sequence<Int, ic...>,
     std::integral_constant<I, i> ii,
@@ -600,8 +608,8 @@ namespace detail
   {
     check_unique_int<Int, ic...>{};
 
-    using result_type = rswitch_result_with_i_t<
-      T, Func, DefaultFunc, I, i, Int, ic...>;
+    using result_type = rswitch_result_t<
+      T, Func, DefaultFunc, std::integral_constant<I, i>, Int, ic...>;
     using is_void = typename std::is_same<void, result_type>::type;
 
     return rswitch_fn(is_void{}, select(
