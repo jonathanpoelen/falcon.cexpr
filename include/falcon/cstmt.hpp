@@ -328,23 +328,13 @@ namespace detail
 
 #define FALCON_LNAME_1(c) c##0
 #define FALCON_LNAME_2(c) c##0, c##1
-#define FALCON_LNAME_4(c) FALCON_LNAME_2(c##a), FALCON_LNAME_2(c##b)
-#define FALCON_LNAME_8(c) FALCON_LNAME_4(c##c), FALCON_LNAME_4(c##d)
-#define FALCON_LNAME_16(c) FALCON_LNAME_8(c##e), FALCON_LNAME_8(c##f)
-#define FALCON_LNAME_32(c) FALCON_LNAME_16(c##g), FALCON_LNAME_16(c##h)
-#define FALCON_LNAME_64(c) FALCON_LNAME_32(c##i), FALCON_LNAME_32(c##j)
-#define FALCON_LNAME_128(c) FALCON_LNAME_64(c##k), FALCON_LNAME_64(c##l)
-#define FALCON_LNAME_256(c) FALCON_LNAME_128(c##m), FALCON_LNAME_128(c##n)
-
-#define FALCON_TNAME_1(c) Int c##0
-#define FALCON_TNAME_2(c) Int c##0, Int c##1
-#define FALCON_TNAME_4(c) FALCON_TNAME_2(c##a), FALCON_TNAME_2(c##b)
-#define FALCON_TNAME_8(c) FALCON_TNAME_4(c##c), FALCON_TNAME_4(c##d)
-#define FALCON_TNAME_16(c) FALCON_TNAME_8(c##e), FALCON_TNAME_8(c##f)
-#define FALCON_TNAME_32(c) FALCON_TNAME_16(c##g), FALCON_TNAME_16(c##h)
-#define FALCON_TNAME_64(c) FALCON_TNAME_32(c##i), FALCON_TNAME_32(c##j)
-#define FALCON_TNAME_128(c) FALCON_TNAME_64(c##k), FALCON_TNAME_64(c##l)
-#define FALCON_TNAME_256(c) FALCON_TNAME_128(c##m), FALCON_TNAME_128(c##n)
+#define FALCON_LNAME_4(c) FALCON_LNAME_2(c##0), FALCON_LNAME_2(c##1)
+#define FALCON_LNAME_8(c) FALCON_LNAME_4(c##0), FALCON_LNAME_4(c##1)
+#define FALCON_LNAME_16(c) FALCON_LNAME_8(c##0), FALCON_LNAME_8(c##1)
+#define FALCON_LNAME_32(c) FALCON_LNAME_16(c##0), FALCON_LNAME_16(c##1)
+#define FALCON_LNAME_64(c) FALCON_LNAME_32(c##0), FALCON_LNAME_32(c##1)
+#define FALCON_LNAME_128(c) FALCON_LNAME_64(c##0), FALCON_LNAME_64(c##1)
+#define FALCON_LNAME_256(c) FALCON_LNAME_128(c##0), FALCON_LNAME_128(c##1)
 
 #define FALCON_TCASE_1(c)                    \
   case c##0: return std::forward<Func>(func) \
@@ -354,34 +344,37 @@ namespace detail
     (std::integral_constant<Int, c##0>{});   \
   case c##1: return std::forward<Func>(func) \
     (std::integral_constant<Int, c##1>{});
-#define FALCON_TCASE_4(c) FALCON_TCASE_2(c##a) FALCON_TCASE_2(c##b)
-#define FALCON_TCASE_8(c) FALCON_TCASE_4(c##c) FALCON_TCASE_4(c##d)
-#define FALCON_TCASE_16(c) FALCON_TCASE_8(c##e) FALCON_TCASE_8(c##f)
-#define FALCON_TCASE_32(c) FALCON_TCASE_16(c##g) FALCON_TCASE_16(c##h)
-#define FALCON_TCASE_64(c) FALCON_TCASE_32(c##i) FALCON_TCASE_32(c##j)
-#define FALCON_TCASE_128(c) FALCON_TCASE_64(c##k) FALCON_TCASE_64(c##l)
-#define FALCON_TCASE_256(c) FALCON_TCASE_128(c##m) FALCON_TCASE_128(c##n)
+#define FALCON_TCASE_4(c) FALCON_TCASE_2(c##0) FALCON_TCASE_2(c##1)
+#define FALCON_TCASE_8(c) FALCON_TCASE_4(c##0) FALCON_TCASE_4(c##1)
+#define FALCON_TCASE_16(c) FALCON_TCASE_8(c##0) FALCON_TCASE_8(c##1)
+#define FALCON_TCASE_32(c) FALCON_TCASE_16(c##0) FALCON_TCASE_16(c##1)
+#define FALCON_TCASE_64(c) FALCON_TCASE_32(c##0) FALCON_TCASE_32(c##1)
+#define FALCON_TCASE_128(c) FALCON_TCASE_64(c##0) FALCON_TCASE_64(c##1)
+#define FALCON_TCASE_256(c) FALCON_TCASE_128(c##0) FALCON_TCASE_128(c##1)
 
-#define FALCON_RSWITCH(X)                                     \
-  template<                                                   \
-    class T, class Int, FALCON_TNAME_##X(i), Int... ints,     \
-    class I, class Func, class DefaultFunc>                   \
-  static constexpr T rswitch_impl(                            \
-    std::false_type,                                          \
-    std::integer_sequence<Int, FALCON_LNAME_##X(i), ints...>, \
-    I const & i, Func && func, DefaultFunc && default_func)   \
-  {                                                           \
-    switch (i)                                                \
-    {                                                         \
-      FALCON_TCASE_##X(i)                                     \
-      default: return rswitch_impl<T>(                        \
-        std::false_type{},                                    \
-        std::integer_sequence<Int, ints...>{},                \
-        i, std::forward<Func>(func),                          \
-        std::forward<DefaultFunc>(default_func)               \
-      );                                                      \
-    }                                                         \
+# define FALCON_RSWITCH_I(TN, LN, C)                        \
+  template<                                                 \
+    class T, class Int, TN, Int... ints,                    \
+    class I, class Func, class DefaultFunc>                 \
+  static constexpr T rswitch_impl(                          \
+    std::false_type,                                        \
+    std::integer_sequence<Int, LN, ints...>,                \
+    I const & i, Func && func, DefaultFunc && default_func) \
+  {                                                         \
+    switch (i)                                              \
+    {                                                       \
+      C                                                     \
+      default: return rswitch_impl<T>(                      \
+        std::false_type{},                                  \
+        std::integer_sequence<Int, ints...>{},              \
+        i, std::forward<Func>(func),                        \
+        std::forward<DefaultFunc>(default_func)             \
+      );                                                    \
+    }                                                       \
   }
+
+#define FALCON_RSWITCH(X) FALCON_RSWITCH_I(\
+  FALCON_LNAME_##X(Int i), FALCON_LNAME_##X(i), FALCON_TCASE_##X(i))
 
   FALCON_RSWITCH(1)
   FALCON_RSWITCH(2)
@@ -394,7 +387,7 @@ namespace detail
   FALCON_RSWITCH(256)
 
   template<
-    class T, class Int, FALCON_TNAME_256(i),
+    class T, class Int, FALCON_LNAME_256(Int i),
     class I, class Func, class DefaultFunc>
   static constexpr T rswitch_impl(
     std::true_type,
@@ -407,6 +400,95 @@ namespace detail
     }
   }
 
+#if defined(__GNUC__) && !defined(__clang__)
+
+// GCC: Nested switch is not optimized.
+// Generate switch statement with all cases from 1 to 16.
+
+# ifndef FALCON_PP_COMMA
+#   define FALCON_PP_COMMA ,
+# endif
+
+  // 3
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_2(Int i) FALCON_PP_COMMA FALCON_LNAME_1(Int ix),
+    FALCON_LNAME_2(i) FALCON_PP_COMMA FALCON_LNAME_1(ix),
+    FALCON_TCASE_2(i) FALCON_TCASE_1(ix)
+  )
+  // 5
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_4(Int i) FALCON_PP_COMMA FALCON_LNAME_1(Int ix),
+    FALCON_LNAME_4(i) FALCON_PP_COMMA FALCON_LNAME_1(ix),
+    FALCON_TCASE_4(i) FALCON_TCASE_1(ix)
+  )
+  // 6
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_4(Int i) FALCON_PP_COMMA FALCON_LNAME_2(Int ix),
+    FALCON_LNAME_4(i) FALCON_PP_COMMA FALCON_LNAME_2(ix),
+    FALCON_TCASE_4(i) FALCON_TCASE_2(ix)
+  )
+  // 7
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_4(Int i) FALCON_PP_COMMA FALCON_LNAME_2(Int ix) FALCON_PP_COMMA
+    FALCON_LNAME_1(Int iy),
+    FALCON_LNAME_4(i) FALCON_PP_COMMA FALCON_LNAME_2(ix) FALCON_PP_COMMA
+    FALCON_LNAME_1(iy),
+    FALCON_TCASE_4(i) FALCON_TCASE_2(ix) FALCON_TCASE_1(iy)
+  )
+  // 9
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_8(Int i) FALCON_PP_COMMA FALCON_LNAME_1(Int ix),
+    FALCON_LNAME_8(i) FALCON_PP_COMMA FALCON_LNAME_1(ix),
+    FALCON_TCASE_8(i) FALCON_TCASE_1(ix)
+  )
+  // 10
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_8(Int i) FALCON_PP_COMMA FALCON_LNAME_2(Int ix),
+    FALCON_LNAME_8(i) FALCON_PP_COMMA FALCON_LNAME_2(ix),
+    FALCON_TCASE_8(i) FALCON_TCASE_2(ix)
+  )
+  // 11
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_8(Int i) FALCON_PP_COMMA FALCON_LNAME_2(Int ix) FALCON_PP_COMMA
+    FALCON_LNAME_1(Int iy),
+    FALCON_LNAME_8(i) FALCON_PP_COMMA FALCON_LNAME_2(ix) FALCON_PP_COMMA
+    FALCON_LNAME_1(iy),
+    FALCON_TCASE_8(i) FALCON_TCASE_2(ix) FALCON_TCASE_1(iy)
+  )
+  // 12
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_8(Int i) FALCON_PP_COMMA FALCON_LNAME_4(Int ix),
+    FALCON_LNAME_8(i) FALCON_PP_COMMA FALCON_LNAME_4(ix),
+    FALCON_TCASE_8(i) FALCON_TCASE_4(ix)
+  )
+  // 13
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_8(Int i) FALCON_PP_COMMA FALCON_LNAME_4(Int ix) FALCON_PP_COMMA
+    FALCON_LNAME_1(Int iy),
+    FALCON_LNAME_8(i) FALCON_PP_COMMA FALCON_LNAME_4(ix) FALCON_PP_COMMA
+    FALCON_LNAME_1(iy),
+    FALCON_TCASE_8(i) FALCON_TCASE_4(ix) FALCON_TCASE_1(iy)
+  )
+  // 14
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_8(Int i) FALCON_PP_COMMA FALCON_LNAME_4(Int ix) FALCON_PP_COMMA
+    FALCON_LNAME_2(Int iy),
+    FALCON_LNAME_8(i) FALCON_PP_COMMA FALCON_LNAME_4(ix) FALCON_PP_COMMA
+    FALCON_LNAME_2(iy),
+    FALCON_TCASE_8(i) FALCON_TCASE_4(ix) FALCON_TCASE_2(iy)
+  )
+  // 15
+  FALCON_RSWITCH_I(
+    FALCON_LNAME_8(Int i) FALCON_PP_COMMA FALCON_LNAME_4(Int ix) FALCON_PP_COMMA
+    FALCON_LNAME_2(Int iy) FALCON_PP_COMMA FALCON_LNAME_1(Int iz),
+    FALCON_LNAME_8(i) FALCON_PP_COMMA FALCON_LNAME_4(ix) FALCON_PP_COMMA
+    FALCON_LNAME_2(iy) FALCON_PP_COMMA FALCON_LNAME_1(iz),
+    FALCON_TCASE_8(i) FALCON_TCASE_4(ix) FALCON_TCASE_2(iy) FALCON_TCASE_1(iz)
+  )
+
+#endif
+
+#undef FALCON_RSWITCH_I
 #undef FALCON_RSWITCH
 #undef FALCON_LNAME_1
 #undef FALCON_LNAME_2
@@ -417,15 +499,6 @@ namespace detail
 #undef FALCON_LNAME_64
 #undef FALCON_LNAME_128
 #undef FALCON_LNAME_256
-#undef FALCON_TNAME_1
-#undef FALCON_TNAME_2
-#undef FALCON_TNAME_4
-#undef FALCON_TNAME_8
-#undef FALCON_TNAME_16
-#undef FALCON_TNAME_32
-#undef FALCON_TNAME_64
-#undef FALCON_TNAME_128
-#undef FALCON_TNAME_256
 #undef FALCON_TCASE_1
 #undef FALCON_TCASE_2
 #undef FALCON_TCASE_4
