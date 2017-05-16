@@ -89,6 +89,8 @@ int main()
   auto xto4 = [](auto) { return 4; };
   auto throw_ = [](auto){ throw 2; };
 
+  cswitch(ints, char(0), is(0), throw_);
+
   cswitch(ints, 0, is(0), throw_);
   cswitch(ints, 1, is(1), throw_);
   cswitch(ints, 2, is(2), throw_);

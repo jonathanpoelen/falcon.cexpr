@@ -227,7 +227,7 @@ struct cswitch_fn
 
   /// \brief shortcut for \c cswitch(\p ints, \p i, \p func, \p func)
   template<class Ints, class I, class Func>
-  constexpr void operator()(Ints ints, I i, Func && func) const
+  constexpr void operator()(Ints ints, I const & i, Func && func) const
   {
     detail::rswitch<void>(
       ints, i,
@@ -284,7 +284,7 @@ struct rswitch_fn
   template<class Int, Int... ic, class I, class Func, class DefaultFunc>
   constexpr auto operator()(
     std::integer_sequence<Int, ic...> ints,
-    I i, Func && func, DefaultFunc && default_func
+    I const & i, Func && func, DefaultFunc && default_func
   ) const
   FALCON_DECLTYPE_AUTO_RETURN(
     detail::rswitch<detail::auto_>(
@@ -302,7 +302,7 @@ struct rswitch_fn
   template<class Int, Int... ic, class I, class Func>
   constexpr auto operator()(
     std::integer_sequence<Int, ic...> ints,
-    I i, Func && func
+    I const & i, Func && func
   ) const
   FALCON_DECLTYPE_AUTO_RETURN(
     detail::rswitch<detail::auto_>(
@@ -334,7 +334,7 @@ struct rswitch_or_fn
   template<class T, class Int, Int... ic, class I, class Func>
   constexpr std::decay_t<T> operator()(
     std::integer_sequence<Int, ic...> ints,
-    I i, Func && func, T && default_value
+    I const & i, Func && func, T && default_value
   ) const
   {
     return detail::rswitch<T>(
@@ -384,18 +384,17 @@ namespace detail
 #define FALCON_TCASE_128(c) FALCON_TCASE_64(c##0) FALCON_TCASE_64(c##1)
 #define FALCON_TCASE_256(c) FALCON_TCASE_128(c##0) FALCON_TCASE_128(c##1)
 
-# define FALCON_RSWITCH_I(TN, LN, C)                        \
+# define FALCON_RSWITCH_I(TN, LN, Cases)                    \
   template<                                                 \
-    class T, class Int, TN, Int... ints,                    \
+    class T, class B, class Int, TN, Int... ints,           \
     class I, class Func, class DefaultFunc>                 \
   static constexpr T rswitch_impl(                          \
-    std::false_type,                                        \
-    std::integer_sequence<Int, LN, ints...>,                \
+    B, std::integer_sequence<Int, LN, ints...>,             \
     I const & i, Func && func, DefaultFunc && default_func) \
   {                                                         \
     switch (i)                                              \
     {                                                       \
-      C                                                     \
+      Cases                                                 \
       default: return rswitch_impl<T>(                      \
         std::false_type{},                                  \
         std::integer_sequence<Int, ints...>{},              \
